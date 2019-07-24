@@ -32,14 +32,22 @@ def initialize_git(project_directory):
 
     print("Initializing git repo...")
     result = subprocess.run(
-        ["git", "init"], cwd=project_directory, encoding="utf8", capture_output=True
+        ["git", "init"],
+        cwd=project_directory,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:
         print("Unable to initialize the git repo.")
         print(result.stdout, result.stderr)
 
     result = subprocess.run(
-        ["git", "add", "."], cwd=project_directory, encoding="utf8", capture_output=True
+        ["git", "add", "."],
+        cwd=project_directory,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:
         print("Unable to add all files into the git repo.")
@@ -49,7 +57,8 @@ def initialize_git(project_directory):
         ["git", "commit", '-m"Initial commit"'],
         cwd=project_directory,
         encoding="utf8",
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:
         print("Unable to make the initial commit.")
@@ -59,7 +68,8 @@ def initialize_git(project_directory):
         ["git", "tag", "0.1.0"],
         cwd=project_directory,
         encoding="utf8",
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
     if result.returncode != 0:
         print("Unable to tag the initial commit.")
@@ -246,6 +256,7 @@ def set_flags_in_settings_files():
     set_django_secret_key(
         os.path.join("{{ cookiecutter.project_slug }}", "settings", "test.py")
     )
+
 
 def remove_storage():
     os.remove(os.path.join("{{ cookiecutter.project_slug }}", "storage.py"))
