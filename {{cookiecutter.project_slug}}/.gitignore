@@ -338,3 +338,4 @@ media/
 
 RELEASE.txt
 {{ cookiecutter.project_slug }}/settings/dev.py
+site-packages

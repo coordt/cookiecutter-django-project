@@ -5,12 +5,27 @@ volumes:
   local_postgres_data_backups: {}
 
 services:
+  setup:
+    build:
+      context: .
+      dockerfile: ./Dockerfile-dev
+    image: {{ cookiecutter.project_slug}}_pydev
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      PYTHONUSERBASE: /app/site-packages
+    command: pip install -r requirements/dev.txt --user --upgrade
+
   django:{% if cookiecutter.use_celery == 'y' %} &django{% endif %}
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./Dockerfile-dev
     image: {{ cookiecutter.project_slug }}_django
     depends_on:
+      - setup
       - postgres
       {%- if cookiecutter.use_mailhog == 'y' %}
       - mailhog
@@ -19,6 +34,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgres://postgres:!!!SET POSTGRES_PASSWORD!!!@postgres/test_project
+      PYTHONUSERBASE: /app/site-packages
     ports:
       - "8000:8000"
     command: /app/bin/start-django-dev

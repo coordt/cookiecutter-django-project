@@ -204,7 +204,7 @@ AZURE_ACCOUNT_KEY = env("DJANGO_AZURE_ACCOUNT_KEY")
 AZURE_CONTAINER = env("DJANGO_AZURE_CONTAINER")
 AZURE_URL_EXPIRATION_SECS = 60 * 60 * 24 * 7
 {% endif -%}
-
+{%- endif %}
 
 # STATIC
 # https://docs.djangoproject.com/en/2.2/ref/settings/#static-files
@@ -226,9 +226,12 @@ STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 {% elif cookiecutter.cloud_provider == 'Azure' %}
 STATICFILES_STORAGE = "{{ cookiecutter.project_slug }}.storage.PublicAzureStorage"
+STATIC_URL = "/static/"
 {% elif cookiecutter.use_whitenoise == 'y' %}
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATIC_URL = "/static/"
 {% else %}
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 STATIC_URL = "/static/"
 {%- endif %}
 {%- if cookiecutter.use_compressor == 'y' %}
@@ -236,8 +239,6 @@ COMPRESS_ENABLED = env.bool("COMPRESS_ENABLED", default=True)
 COMPRESS_STORAGE = STATICFILES_STORAGE
 COMPRESS_URL = STATIC_URL
 {% endif %}
-
-{%- endif %}
 
 # FILE UPLOADS
 # https://docs.djangoproject.com/en/2.2/ref/settings/#file-uploads

@@ -247,6 +247,7 @@ def set_flags_in_envs(postgres_user, celery_flower_user, debug=False):
     dev_postgres_env_path = os.path.join(".envs", "dev", "postgres")
     pg_pass = set_postgres_password(dev_postgres_env_path)
     set_flag(production_django_envs_path, "!!!SET POSTGRES_PASSWORD!!!", value=pg_pass)
+    set_flag("local.yml", "!!!SET POSTGRES_PASSWORD!!!", value=pg_pass)
     set_django_secret_key(production_django_envs_path)
     set_celery_flower_user(production_django_envs_path, value=celery_flower_user)
     set_celery_flower_password(production_django_envs_path)
