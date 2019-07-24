@@ -337,4 +337,4 @@ media/
 .ipython/
 
 RELEASE.txt
-{{ cookiecutter.project_slug }}/settings/dev.txt
+{{ cookiecutter.project_slug }}/settings/dev.py

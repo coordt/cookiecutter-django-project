@@ -36,9 +36,9 @@ until postgres_ready; do
   >&2 echo 'Waiting for PostgreSQL to become available...'
   sleep $(( NEXT_WAIT_TIME++ ))
   if [ $NEXT_WAIT_TIME -eq 10 ]; then
-    echo 'PostgreSQL service did not come respond within 10 tries. Exiting.'
+    echo 'PostgreSQL service did not respond within 10 tries. Exiting.'
     exit -1
-   fi
+  fi
 done
 >&2 echo 'PostgreSQL is available'
 
