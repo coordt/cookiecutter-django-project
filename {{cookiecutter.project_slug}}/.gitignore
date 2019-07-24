@@ -161,7 +161,6 @@ typings/
 !.vscode/extensions.json
 
 
-{% if cookiecutter.use_pycharm == 'y' -%}
 # Provided default Pycharm Run/Debug Configurations should be tracked by git
 # In case of local modifications made by Pycharm, use update-index command
 # for each changed file, like this:
@@ -216,7 +215,6 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 fabric.properties
-{% endif %}
 
 
 ### Windows template
@@ -321,28 +319,23 @@ Session.vim
 
 # Auto-generated tag files
 tags
-{% if cookiecutter.use_docker == 'n' %}
 
 ### VirtualEnv template
 # Virtualenv
-[Bb]in
-[Ii]nclude
-[Ll]ib
-[Ll]ib64
-[Ss]cripts
 pyvenv.cfg
 pip-selfcheck.json
 .env
-{% endif %}
 
 ### Project template
-{% if cookiecutter.use_mailhog == 'y' and cookiecutter.use_docker == 'n' %}
+{% if cookiecutter.use_mailhog == 'y' %}
 MailHog
 {%- endif %}
-{{ cookiecutter.project_slug }}/media/
+media/
 
 .pytest_cache/
 
-{% if cookiecutter.use_docker == 'y' %}
 .ipython/
-{%- endif %}
+
+RELEASE.txt
+{{ cookiecutter.project_slug }}/settings/dev.py
+site-packages

@@ -30,8 +30,6 @@ def context():
 
 
 @pytest_fixture_plus
-@pytest.mark.parametrize("windows", YN_CHOICES, ids=lambda yn: f"win:{yn}")
-@pytest.mark.parametrize("use_docker", YN_CHOICES, ids=lambda yn: f"docker:{yn}")
 @pytest.mark.parametrize("use_celery", YN_CHOICES, ids=lambda yn: f"celery:{yn}")
 @pytest.mark.parametrize("use_mailhog", YN_CHOICES, ids=lambda yn: f"mailhog:{yn}")
 @pytest.mark.parametrize("use_sentry", YN_CHOICES, ids=lambda yn: f"sentry:{yn}")
@@ -39,19 +37,10 @@ def context():
 @pytest.mark.parametrize("use_whitenoise", YN_CHOICES, ids=lambda yn: f"wnoise:{yn}")
 @pytest.mark.parametrize("cloud_provider", CLOUD_CHOICES, ids=lambda yn: f"cloud:{yn}")
 def context_combination(
-    windows,
-    use_docker,
-    use_celery,
-    use_mailhog,
-    use_sentry,
-    use_compressor,
-    use_whitenoise,
-    cloud_provider,
+    use_celery, use_mailhog, use_sentry, use_compressor, use_whitenoise, cloud_provider
 ):
     """Fixture that parametrize the function where it's used."""
     return {
-        "windows": windows,
-        "use_docker": use_docker,
         "use_compressor": use_compressor,
         "use_celery": use_celery,
         "use_mailhog": use_mailhog,
@@ -67,6 +56,7 @@ def build_files_list(root_dir):
         os.path.join(dirpath, file_path)
         for dirpath, subdirs, files in os.walk(root_dir)
         for file_path in files
+        if ".git" not in dirpath
     ]
 
 
@@ -78,11 +68,14 @@ def check_paths(paths):
     for path in paths:
         if is_binary(path):
             continue
-
-        for line in open(path, "r"):
-            match = RE_OBJ.search(line)
-            msg = "cookiecutter variable not replaced in {}"
-            assert match is None, msg.format(path)
+        try:
+            for line in open(path, "r"):
+                match = RE_OBJ.search(line)
+                msg = "cookiecutter variable not replaced in {}"
+                assert match is None, msg.format(path)
+        except Exception as e:
+            print(f"Exception raise while reading {path}: {str(e)}")
+            pytest.fail(e)
 
 
 def test_project_generation(cookies, context, context_combination):
@@ -125,7 +118,8 @@ def test_black_passes(cookies, context_combination):
     This is parametrized for each combination from ``context_combination`` fixture
     """
     result = cookies.bake(extra_context=context_combination)
-
+    if result.exception:
+        pytest.fail(str(result.exception))
     try:
         sh.black("--check", "--diff", "--exclude", "migrations", f"{result.project}/")
     except sh.ErrorReturnCode as e:

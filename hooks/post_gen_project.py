@@ -1,14 +1,3 @@
-"""
-NOTE:
-    the below code is to be maintained Python 2.x-compatible
-    as the whole Cookiecutter Django project initialization
-    can potentially be run in Python 2.x environment
-    (at least so we presume in `pre_gen_project.py`).
-
-TODO: ? restrict Cookiecutter Django project initialization to Python 3.x environments only
-"""
-from __future__ import print_function
-
 import os
 import random
 import shutil
@@ -29,6 +18,62 @@ HINT = "\x1b[3;33m"
 SUCCESS = "\x1b[1;32m [SUCCESS]: "
 
 DEBUG_VALUE = "debug"
+PROJECT_DIRECTORY = os.path.realpath(os.path.curdir)
+
+
+def initialize_git(project_directory):
+    """
+    Initialize the git repo.
+
+    Args:
+        project_directory:
+    """
+    import subprocess
+
+    print("Initializing git repo...")
+    result = subprocess.run(
+        ["git", "init"],
+        cwd=project_directory,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        print("Unable to initialize the git repo.")
+        print(result.stdout, result.stderr)
+
+    result = subprocess.run(
+        ["git", "add", "."],
+        cwd=project_directory,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        print("Unable to add all files into the git repo.")
+        print(result.stdout, result.stderr)
+
+    result = subprocess.run(
+        ["git", "commit", '-m"Initial commit"'],
+        cwd=project_directory,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        print("Unable to make the initial commit.")
+        print(result.stdout, result.stderr)
+
+    result = subprocess.run(
+        ["git", "tag", "0.1.0"],
+        cwd=project_directory,
+        encoding="utf8",
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    if result.returncode != 0:
+        print("Unable to tag the initial commit.")
+        print(result.stdout, result.stderr)
 
 
 def remove_open_source_files():
@@ -43,37 +88,11 @@ def remove_gplv3_files():
         os.remove(file_name)
 
 
-def remove_pycharm_files():
-    idea_dir_path = ".idea"
-    if os.path.exists(idea_dir_path):
-        shutil.rmtree(idea_dir_path)
-
-    docs_dir_path = os.path.join("docs", "pycharm")
-    if os.path.exists(docs_dir_path):
-        shutil.rmtree(docs_dir_path)
-
-
 def remove_docker_files():
     shutil.rmtree("compose")
 
-    file_names = ["local.yml", "production.yml", ".dockerignore"]
+    file_names = ["local.yml", ".dockerignore"]
     for file_name in file_names:
-        os.remove(file_name)
-
-
-def remove_utility_files():
-    shutil.rmtree("utility")
-
-
-def remove_heroku_files():
-    file_names = ["Procfile", "runtime.txt", "requirements.txt"]
-    for file_name in file_names:
-        if (
-            file_name == "requirements.txt"
-            and "{{ cookiecutter.use_travisci }}".lower() == "y"
-        ):
-            # don't remove the file if we are using travisci but not using heroku
-            continue
         os.remove(file_name)
 
 
@@ -91,11 +110,14 @@ def remove_packagejson_file():
 
 def remove_celery_files():
     file_names = [
-        os.path.join("config", "celery_app.py"),
+        os.path.join("{{ cookiecutter.project_slug }}", "celery_app.py"),
         os.path.join("{{ cookiecutter.project_slug }}", "users", "tasks.py"),
         os.path.join(
             "{{ cookiecutter.project_slug }}", "users", "tests", "test_tasks.py"
         ),
+        os.path.join("bin", "start-celery-beat"),
+        os.path.join("bin", "start-celery-worker"),
+        os.path.join("bin", "start-flower"),
     ]
     for file_name in file_names:
         os.remove(file_name)
@@ -170,20 +192,8 @@ def set_django_secret_key(file_path):
     return django_secret_key
 
 
-def set_django_admin_url(file_path):
-    django_admin_url = set_flag(
-        file_path,
-        "!!!SET DJANGO_ADMIN_URL!!!",
-        formatted="{}/",
-        length=32,
-        using_digits=True,
-        using_ascii_letters=True,
-    )
-    return django_admin_url
-
-
 def generate_random_user():
-    return generate_random_string(length=32, using_ascii_letters=True)
+    return generate_random_string(length=10, using_ascii_letters=True)
 
 
 def generate_postgres_user(debug=False):
@@ -233,114 +243,71 @@ def append_to_gitignore_file(s):
 
 
 def set_flags_in_envs(postgres_user, celery_flower_user, debug=False):
-    local_django_envs_path = os.path.join(".envs", ".local", ".django")
-    production_django_envs_path = os.path.join(".envs", ".production", ".django")
-    local_postgres_envs_path = os.path.join(".envs", ".local", ".postgres")
-    production_postgres_envs_path = os.path.join(".envs", ".production", ".postgres")
-
+    production_django_envs_path = os.path.join(".envs", "prod", "django")
+    dev_postgres_env_path = os.path.join(".envs", "dev", "postgres")
+    pg_pass = set_postgres_password(dev_postgres_env_path)
+    set_flag(production_django_envs_path, "!!!SET POSTGRES_PASSWORD!!!", value=pg_pass)
+    set_flag("local.yml", "!!!SET POSTGRES_PASSWORD!!!", value=pg_pass)
     set_django_secret_key(production_django_envs_path)
-    set_django_admin_url(production_django_envs_path)
-
-    set_postgres_user(local_postgres_envs_path, value=postgres_user)
-    set_postgres_password(
-        local_postgres_envs_path, value=DEBUG_VALUE if debug else None
-    )
-    set_postgres_user(production_postgres_envs_path, value=postgres_user)
-    set_postgres_password(
-        production_postgres_envs_path, value=DEBUG_VALUE if debug else None
-    )
-
-    set_celery_flower_user(local_django_envs_path, value=celery_flower_user)
-    set_celery_flower_password(
-        local_django_envs_path, value=DEBUG_VALUE if debug else None
-    )
     set_celery_flower_user(production_django_envs_path, value=celery_flower_user)
-    set_celery_flower_password(
-        production_django_envs_path, value=DEBUG_VALUE if debug else None
-    )
+    set_celery_flower_password(production_django_envs_path)
 
 
 def set_flags_in_settings_files():
-    set_django_secret_key(os.path.join("config", "settings", "local.py"))
-    set_django_secret_key(os.path.join("config", "settings", "test.py"))
+    set_django_secret_key(
+        os.path.join("{{ cookiecutter.project_slug }}", "settings", "test.py")
+    )
+
+
+def remove_storage():
+    os.remove(os.path.join("{{ cookiecutter.project_slug }}", "storage.py"))
 
 
 def remove_envs_and_associated_files():
     shutil.rmtree(".envs")
-    os.remove("merge_production_dotenvs_in_dotenv.py")
+    os.remove(os.path.join("bin", "merge_production_dotenvs_in_dotenv.py"))
 
 
-def remove_celery_compose_dirs():
-    shutil.rmtree(os.path.join("compose", "local", "django", "celery"))
-    shutil.rmtree(os.path.join("compose", "production", "django", "celery"))
-
-
-def remove_node_dockerfile():
-    shutil.rmtree(os.path.join("compose", "local", "node"))
+def create_dev_settings():
+    shutil.copy(
+        os.path.join("{{ cookiecutter.project_slug }}", "settings", "dev_template.py"),
+        os.path.join("{{ cookiecutter.project_slug }}", "settings", "dev.py"),
+    )
+    shutil.copy(os.path.join(".envs", "prod", "django"), ".env")
+    set_flag(
+        ".env",
+        "DJANGO_SETTINGS_MODULE=test_project.settings.prod",
+        value="DJANGO_SETTINGS_MODULE=test_project.settings",
+    )
 
 
 def main():
-    debug = "{{ cookiecutter.debug }}".lower() == "y"
+    set_flags_in_envs(generate_random_user(), generate_random_user())
 
-    set_flags_in_envs(
-        DEBUG_VALUE if debug else generate_random_user(),
-        DEBUG_VALUE if debug else generate_random_user(),
-        debug=debug,
-    )
     set_flags_in_settings_files()
+    create_dev_settings()
 
     if "{{ cookiecutter.open_source_license }}" == "Not open source":
         remove_open_source_files()
     if "{{ cookiecutter.open_source_license}}" != "GPLv3":
         remove_gplv3_files()
 
-    if "{{ cookiecutter.use_pycharm }}".lower() == "n":
-        remove_pycharm_files()
-
-    if "{{ cookiecutter.use_docker }}".lower() == "y":
-        remove_utility_files()
-    else:
-        remove_docker_files()
-
-    if "{{ cookiecutter.use_heroku }}".lower() == "n":
-        remove_heroku_files()
-
-    if (
-        "{{ cookiecutter.use_docker }}".lower() == "n"
-        and "{{ cookiecutter.use_heroku }}".lower() == "n"
-    ):
-        if "{{ cookiecutter.keep_local_envs_in_vcs }}".lower() == "y":
-            print(
-                INFO + ".env(s) are only utilized when Docker Compose and/or "
-                "Heroku support is enabled so keeping them does not "
-                "make sense given your current setup." + TERMINATOR
-            )
-        remove_envs_and_associated_files()
-    else:
-        append_to_gitignore_file(".env")
-        append_to_gitignore_file(".envs/*")
-        if "{{ cookiecutter.keep_local_envs_in_vcs }}".lower() == "y":
-            append_to_gitignore_file("!.envs/.local/")
-
-    if "{{ cookiecutter.js_task_runner}}".lower() == "none":
-        remove_gulp_files()
-        remove_packagejson_file()
-        if "{{ cookiecutter.use_docker }}".lower() == "y":
-            remove_node_dockerfile()
-
     if "{{ cookiecutter.cloud_provider}}".lower() == "none":
         print(
             WARNING + "You chose not to use a cloud provider, "
             "media files won't be served in production." + TERMINATOR
         )
+        remove_storage()
+    elif "{{ cookiecutter.cloud_provider}}".lower() == "GCP":
+        remove_storage()
 
     if "{{ cookiecutter.use_celery }}".lower() == "n":
         remove_celery_files()
-        if "{{ cookiecutter.use_docker }}".lower() == "y":
-            remove_celery_compose_dirs()
 
     if "{{ cookiecutter.use_travisci }}".lower() == "n":
         remove_dottravisyml_file()
+
+    initialize_git(PROJECT_DIRECTORY)
 
     print(SUCCESS + "Project initialized, keep up the good work!" + TERMINATOR)
 

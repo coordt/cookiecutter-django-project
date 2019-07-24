@@ -5,12 +5,27 @@ volumes:
   local_postgres_data_backups: {}
 
 services:
+  setup:
+    build:
+      context: .
+      dockerfile: ./Dockerfile-dev
+    image: {{ cookiecutter.project_slug}}_pydev
+    working_dir: /app
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      PYTHONUSERBASE: /app/site-packages
+    command: pip install -r requirements/dev.txt --user --upgrade
+
   django:{% if cookiecutter.use_celery == 'y' %} &django{% endif %}
     build:
       context: .
-      dockerfile: ./compose/local/django/Dockerfile
-    image: {{ cookiecutter.project_slug }}_local_django
+      dockerfile: ./Dockerfile-dev
+    image: {{ cookiecutter.project_slug }}_django
     depends_on:
+      - setup
       - postgres
       {%- if cookiecutter.use_mailhog == 'y' %}
       - mailhog
@@ -18,38 +33,38 @@ services:
     volumes:
       - .:/app
     env_file:
-      - ./.envs/.local/.django
-      - ./.envs/.local/.postgres
+      - .env
+    environment:
+      DATABASE_URL: postgres://postgres:!!!SET POSTGRES_PASSWORD!!!@postgres/test_project
+      PYTHONUSERBASE: /app/site-packages
     ports:
       - "8000:8000"
-    command: /start
+    command: /app/bin/start-django-dev
 
   postgres:
-    build:
-      context: .
-      dockerfile: ./compose/production/postgres/Dockerfile
-    image: {{ cookiecutter.project_slug }}_production_postgres
+    image: postgres:11-alpine
     volumes:
       - local_postgres_data:/var/lib/postgresql/data
       - local_postgres_data_backups:/backups
     env_file:
-      - ./.envs/.local/.postgres
+      - .env
+    ports:
+      - "5432:5432"
   {%- if cookiecutter.use_mailhog == 'y' %}
 
   mailhog:
     image: mailhog/mailhog:v1.0.0
     ports:
       - "8025:8025"
-
   {%- endif %}
-  {%- if cookiecutter.use_celery == 'y' %}
 
   redis:
     image: redis:5.0
+  {%- if cookiecutter.use_celery == 'y' %}
 
   celeryworker:
     <<: *django
-    image: {{ cookiecutter.project_slug }}_local_celeryworker
+    image: {{ cookiecutter.project_slug }}_celeryworker
     depends_on:
       - redis
       - postgres
@@ -57,11 +72,11 @@ services:
       - mailhog
       {%- endif %}
     ports: []
-    command: /start-celeryworker
+    command: /app/bin/start-celeryworker
 
   celerybeat:
     <<: *django
-    image: {{ cookiecutter.project_slug }}_local_celerybeat
+    image: {{ cookiecutter.project_slug }}_celerybeat
     depends_on:
       - redis
       - postgres
@@ -69,23 +84,19 @@ services:
       - mailhog
       {%- endif %}
     ports: []
-    command: /start-celerybeat
+    command: /app/bin/start-celerybeat
 
   flower:
     <<: *django
-    image: {{ cookiecutter.project_slug }}_local_flower
+    image: {{ cookiecutter.project_slug }}_flower
     ports:
       - "5555:5555"
-    command: /start-flower
+    command: /app/bin/start-flower
 
   {%- endif %}
-  {%- if cookiecutter.js_task_runner == 'Gulp' %}
 
   node:
-    build:
-      context: .
-      dockerfile: ./compose/local/node/Dockerfile
-    image: {{ cookiecutter.project_slug }}_local_node
+    image: node:10-stretch-slim
     depends_on:
       - django
     volumes:
@@ -97,5 +108,3 @@ services:
       - "3000:3000"
       # Expose browsersync UI: https://www.browsersync.io/docs/options/#option-ui
       - "3001:3001"
-
-  {%- endif %}
