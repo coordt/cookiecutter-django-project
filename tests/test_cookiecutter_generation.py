@@ -67,11 +67,14 @@ def check_paths(paths):
     for path in paths:
         if is_binary(path):
             continue
-
-        for line in open(path, "r"):
-            match = RE_OBJ.search(line)
-            msg = "cookiecutter variable not replaced in {}"
-            assert match is None, msg.format(path)
+        try:
+            for line in open(path, "r"):
+                match = RE_OBJ.search(line)
+                msg = "cookiecutter variable not replaced in {}"
+                assert match is None, msg.format(path)
+        except Exception as e:
+            print(f"Exception raise while reading {path}: {str(e)}")
+            pytest.fail(e)
 
 
 def test_project_generation(cookies, context, context_combination):
