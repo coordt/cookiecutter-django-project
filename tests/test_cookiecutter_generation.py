@@ -56,6 +56,7 @@ def build_files_list(root_dir):
         os.path.join(dirpath, file_path)
         for dirpath, subdirs, files in os.walk(root_dir)
         for file_path in files
+        if ".git" not in dirpath
     ]
 
 
